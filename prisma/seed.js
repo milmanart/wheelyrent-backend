@@ -1,0 +1,115 @@
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
+
+const prisma = new PrismaClient();
+
+const cars = [
+  {
+    externalId: 'mustang',
+    brand: 'Ford',
+    model: 'Mustang',
+    year: 2024,
+    pricePerDay: 350,
+    fuelType: 'Benzyna',
+    description: 'Coupe. Przebieg: 25 700 km. Moc: 258 KM. Ocena: 4,9.',
+    latitude: 52.2350,
+    longitude: 21.0000,
+  },
+  {
+    externalId: 'audi',
+    brand: 'Audi',
+    model: 'Q5 Sportback',
+    year: 2021,
+    pricePerDay: 230,
+    fuelType: 'Benzyna',
+    description: 'SUV. Przebieg: 20 200 km. Moc: 275 KM. Ocena: 4,1.',
+    latitude: 52.2220,
+    longitude: 21.0180,
+  },
+  {
+    externalId: 'suzuki',
+    brand: 'Suzuki',
+    model: 'Ertiga XL7',
+    year: 2020,
+    pricePerDay: 180,
+    fuelType: 'Benzyna',
+    description: 'Minivan. Przebieg: 34 200 km. Moc: 103 KM. Ocena: 4,6.',
+    latitude: 52.2380,
+    longitude: 21.0250,
+  },
+  {
+    externalId: 'bmw',
+    brand: 'BMW',
+    model: '320i',
+    year: 2023,
+    pricePerDay: 290,
+    fuelType: 'Benzyna',
+    description: 'Sedan. Przebieg: 12 400 km. Moc: 184 KM. Ocena: 4,7.',
+    latitude: 52.2270,
+    longitude: 20.9950,
+  },
+  {
+    externalId: 'toyota',
+    brand: 'Toyota',
+    model: 'Corolla',
+    year: 2022,
+    pricePerDay: 200,
+    fuelType: 'Hybryda',
+    description: 'Sedan. Przebieg: 18 600 km. Moc: 140 KM. Ocena: 4,5.',
+    latitude: 52.2190,
+    longitude: 21.0300,
+  },
+  {
+    externalId: 'mercedes',
+    brand: 'Mercedes',
+    model: 'C200',
+    year: 2023,
+    pricePerDay: 320,
+    fuelType: 'Diesel',
+    description: 'Sedan. Przebieg: 9 800 km. Moc: 204 KM. Ocena: 4,8.',
+    latitude: 52.2410,
+    longitude: 21.0080,
+  },
+  {
+    externalId: 'vw',
+    brand: 'Volkswagen',
+    model: 'Golf',
+    year: 2021,
+    pricePerDay: 170,
+    fuelType: 'Benzyna',
+    description: 'Hatchback. Przebieg: 42 100 km. Moc: 150 KM. Ocena: 4,3.',
+    latitude: 52.2150,
+    longitude: 21.0050,
+  },
+];
+
+async function main() {
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@rentcar.pl' },
+    update: {},
+    create: {
+      name: 'Administrator',
+      email: 'admin@rentcar.pl',
+      password: await bcrypt.hash('admin123', 10),
+      role: 'ADMIN',
+    },
+  });
+  console.log('Admin:', admin.email);
+
+  const delB = await prisma.booking.deleteMany();
+  const delC = await prisma.car.deleteMany();
+  console.log(`Wiped ${delB.count} bookings, ${delC.count} cars`);
+
+  const result = await prisma.car.createMany({
+    data: cars.map(car => ({
+      ...car,
+      available: true,
+      source: 'wheelyrent-local',
+    })),
+  });
+  console.log(`Seeded ${result.count} local cars with coordinates`);
+}
+
+main()
+  .catch(e => { console.error(e); process.exit(1); })
+  .finally(() => prisma.$disconnect());
