@@ -1,8 +1,13 @@
 # WheelyRent — Backend
 
-Backend for the WheelyRent car rental application. Built with Node.js, Express, PostgreSQL and Prisma. Authentication via JWT.
+REST API aplikacji do wynajmu samochodów WheelyRent. Node.js, Express, PostgreSQL, Prisma, autoryzacja JWT.
 
-## Getting started
+## Wymagania
+
+- Node.js 18+
+- PostgreSQL 15+
+
+## Uruchomienie
 
 ```bash
 npm install
@@ -12,10 +17,20 @@ npx prisma db seed
 npm start
 ```
 
-## Environment
+## Środowisko
 
 ```
 DATABASE_URL=postgresql://user:password@localhost:5432/rentcar
 JWT_SECRET=your_secret
 PORT=3000
 ```
+
+## API
+
+- `auth`     — rejestracja, logowanie, bieżący użytkownik, zmiana hasła
+- `users`    — profil, dokumenty, karty płatnicze, powiadomienia
+- `cars`     — lista/wyszukiwanie, szczegóły, dostępność, opinie; CRUD (admin)
+- `bookings` — utworzenie, moje rezerwacje, anulowanie; wszystkie rezerwacje (admin)
+
+Opinię można dodać dopiero po zakończonym wynajmie danego auta.
+Zdjęcia serwowane są z `/img`.

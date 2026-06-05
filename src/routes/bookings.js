@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 router.post('/', auth, async (req, res) => {
   try {
-    const { carId, startDate, endDate, extrasCost } = req.body;
+    const { carId, startDate, endDate, extrasCost, extras: extrasLabels } = req.body;
     if (!carId || !startDate || !endDate)
       return res.status(400).json({ error: 'carId, startDate and endDate are required' });
 
@@ -16,7 +16,8 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid date format. Use ISO 8601 e.g. 2024-07-15' });
     if (start >= end)
       return res.status(400).json({ error: 'endDate must be after startDate' });
-    if (start < new Date())
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    if (start < todayStart)
       return res.status(400).json({ error: 'startDate cannot be in the past' });
 
     const car = await prisma.car.findUnique({ where: { id: parseInt(carId) } });
@@ -43,6 +44,7 @@ router.post('/', auth, async (req, res) => {
         startDate: start,
         endDate: end,
         extrasCost: extras,
+        extras: extrasLabels ? String(extrasLabels).slice(0, 500) : null,
         totalPrice: days * car.pricePerDay + extras
       },
       include: { car: true }
@@ -55,6 +57,10 @@ router.post('/', auth, async (req, res) => {
 
 router.get('/my', auth, async (req, res) => {
   try {
+    await prisma.booking.updateMany({
+      where: { userId: req.user.id, status: 'ACTIVE', endDate: { lt: new Date() } },
+      data: { status: 'COMPLETED' }
+    });
     const bookings = await prisma.booking.findMany({
       where: { userId: req.user.id },
       include: { car: true },
@@ -68,6 +74,10 @@ router.get('/my', auth, async (req, res) => {
 
 router.get('/all', auth, adminOnly, async (req, res) => {
   try {
+    await prisma.booking.updateMany({
+      where: { status: 'ACTIVE', endDate: { lt: new Date() } },
+      data: { status: 'COMPLETED' }
+    });
     const bookings = await prisma.booking.findMany({
       include: { car: true, user: { select: { id: true, name: true, email: true } } },
       orderBy: { createdAt: 'desc' }

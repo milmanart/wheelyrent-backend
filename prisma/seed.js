@@ -83,6 +83,37 @@ const cars = [
   },
 ];
 
+const reviewsData = {
+  mustang: [
+    { name: 'Anna', stars: 5, text: 'Obs\u0142uga klienta na najwy\u017cszym poziomie' },
+    { name: 'Marek', stars: 4, text: '' },
+  ],
+  audi: [
+    { name: 'Sebastian', stars: 5, text: 'Auto by\u0142o super, warte ka\u017cdej minuty' },
+    { name: 'Dmytro', stars: 4, text: 'by\u0142o dobrze, tylko czego\u015b brakowa\u0142o' },
+  ],
+  suzuki: [
+    { name: 'Iza', stars: 5, text: 'Fajnie auto by\u0142o' },
+    { name: 'Rafa\u0142', stars: 4, text: '' },
+  ],
+  bmw: [
+    { name: 'Kacper', stars: 5, text: '\u015awietne prowadzenie, polecam!' },
+    { name: 'Monika', stars: 5, text: 'Idealne na d\u0142u\u017csze trasy' },
+  ],
+  toyota: [
+    { name: 'Pawe\u0142', stars: 5, text: 'Ekonomiczne i wygodne' },
+    { name: 'Agnieszka', stars: 4, text: 'Dobre auto na co dzie\u0144' },
+  ],
+  mercedes: [
+    { name: 'Tomasz', stars: 5, text: 'Luksus w ka\u017cdym calu' },
+    { name: 'Katarzyna', stars: 5, text: '' },
+  ],
+  vw: [
+    { name: 'Micha\u0142', stars: 4, text: 'Solidne auto, nic do zarzucenia' },
+    { name: 'Ola', stars: 5, text: 'Kompaktowe i zwrotne w mie\u015bcie' },
+  ],
+};
+
 async function main() {
   const admin = await prisma.user.upsert({
     where: { email: 'admin@rentcar.pl' },
@@ -96,9 +127,10 @@ async function main() {
   });
   console.log('Admin:', admin.email);
 
+  await prisma.review.deleteMany();
   const delB = await prisma.booking.deleteMany();
   const delC = await prisma.car.deleteMany();
-  console.log(`Wiped ${delB.count} bookings, ${delC.count} cars`);
+  console.log('Wiped ' + delB.count + ' bookings, ' + delC.count + ' cars');
 
   const result = await prisma.car.createMany({
     data: cars.map(car => ({
@@ -107,7 +139,21 @@ async function main() {
       source: 'wheelyrent-local',
     })),
   });
-  console.log(`Seeded ${result.count} local cars with coordinates`);
+  console.log('Seeded ' + result.count + ' local cars with coordinates');
+
+  const allCars = await prisma.car.findMany({ orderBy: { createdAt: 'asc' } });
+
+  for (const car of allCars) {
+    const revs = reviewsData[car.externalId] || [];
+    for (const rev of revs) {
+      const ruser = await prisma.user.findFirst({ where: { name: rev.name } });
+      const userId = ruser ? ruser.id : admin.id;
+      await prisma.review.create({
+        data: { carId: car.id, userId, stars: rev.stars, text: rev.text || null }
+      });
+    }
+  }
+  console.log('Reviews seeded');
 }
 
 main()

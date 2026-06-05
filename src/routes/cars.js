@@ -54,6 +54,20 @@ router.post('/import', auth, adminOnly, async (req, res) => {
   }
 });
 
+router.get('/:id/availability', async (req, res) => {
+  try {
+    const carId = parseInt(req.params.id);
+    const bookings = await prisma.booking.findMany({
+      where: { carId, status: 'ACTIVE', endDate: { gte: new Date() } },
+      select: { startDate: true, endDate: true },
+      orderBy: { startDate: 'asc' }
+    });
+    res.json(bookings);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const car = await prisma.car.findUnique({ where: { id: parseInt(req.params.id) } });
@@ -111,7 +125,21 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
 
 router.delete('/:id', auth, adminOnly, async (req, res) => {
   try {
-    await prisma.car.delete({ where: { id: parseInt(req.params.id) } });
+    const id = parseInt(req.params.id);
+    const car = await prisma.car.findUnique({ where: { id } });
+    if (!car) return res.status(404).json({ error: 'Car not found' });
+
+    const activeCount = await prisma.booking.count({
+      where: { carId: id, status: 'ACTIVE' }
+    });
+    if (activeCount > 0)
+      return res.status(409).json({ error: 'Nie mozna usunac auta z aktywnymi rezerwacjami' });
+
+    await prisma.$transaction([
+      prisma.review.deleteMany({ where: { carId: id } }),
+      prisma.booking.deleteMany({ where: { carId: id } }),
+      prisma.car.delete({ where: { id } })
+    ]);
     res.json({ message: 'Car deleted' });
   } catch (e) {
     res.status(500).json({ error: e.message });
